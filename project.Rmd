@@ -1,0 +1,55 @@
+---
+title: 'Practical Machine Learning: Course Project'
+output: html_document
+---
+
+In this assessment we will use a dataset which is a collection of measured personal movement to predict what kind of activity they made. The used dataset is available here: http://groupware.les.inf.puc-rio.br/har.
+
+
+## Loading and preprocessing the data
+
+When we load in the train dataset, we can see with dim() function that we have a lot of variables. When we take a look at them we can recognize that most of them are derived from others (something like maximum or mean), and if we take a look one of them (max_roll_belt) we also see that these variables have a lot of missing values, so I clean them out of my dataset. I also remove the first five variables from the dataset, because these contains data about the person's name and the record time and date, and I assume that these kinds of variables don't have connection with our output variable (classe, which is a factor variable, taking value from A to E, and signs the activity).
+
+```{r}
+train<-read.csv("pml-training.csv", header=TRUE)
+test<-read.csv("pml-testing.csv", header=TRUE)
+
+dim(train)
+table(is.na(train$max_roll_belt))
+out<-c("kurtosis", "skewness", "max", "min", "amplitude", "var", "avg", "stddev")
+train_simple<-train
+for (i in out) {
+train_simple<-train_simple[,-grep(i, names(train_simple))]}
+train_simple<-train_simple[,-(1:5)]
+table(train_simple$classe)
+```
+
+
+
+## Modeling
+
+Because we have a factor variable for outcome, I used a tree-based model here, you can see it below.
+
+```{r cache=TRUE}
+library(caret)
+fit<-train(classe~., method="rpart", data=train_simple)
+
+plot(fit$finalModel, uniform=TRUE, main="Classification Tree")
+text(fit$finalModel, use.n=FALSE, all=TRUE, cex=0.75)
+fit$finalModel
+```
+I predicted classe values from this model, and as we expected from the tree, it didn't predict any D value. We can also see that it predict too much A, and it place the half of the cases to the wrong place.
+```{r}
+pred<-predict(fit, train_simple)
+train_simple$predRight<-pred==train_simple$classe
+table(train_simple$predRight)
+table(pred, train_simple$classe)
+```
+
+In the test set we don't have original classe values, so we can't compare them, but these are the predicted values for this dataset.
+```{r}
+pred2<-predict(fit, test)
+table(pred2)
+```
+
+We see that my model is not performing too well. Maybe it is worth to try another methods to see whether it is the maximum achievement from these variables, or my model was wrong.
